@@ -76,13 +76,13 @@ jobs:
           if [ -f "cdrom" ]; then
             sudo qemu-system-x86_64  \
               -enable-kvm -cpu host -m 8G \
-              -drive file=windows.img,format=raw,if=virtio \
-              -cdrom windows.iso -vnc :2 -net nic -net user -monitor unix:/tmp/qemu-monitor.sock,server,nowait -daemonize 
+              -hda windows.img\
+              -cdrom windows.iso -vnc :2 -device e1000,netdev=net0 -netdev user,id=net0 -monitor unix:/tmp/qemu-monitor.sock,server,nowait -daemonize 
           else
             sudo qemu-system-x86_64  \
               -enable-kvm -cpu host -m 8G \
-              -drive file=windows.img,format=raw,if=virtio \
-              -vnc :2 -net nic -net user -monitor unix:/tmp/qemu-monitor.sock,server,nowait -daemonize  
+              -hda windows.img \
+              -vnc :2 -device e1000,netdev=net0 -netdev user,id=net0 -monitor unix:/tmp/qemu-monitor.sock,server,nowait -daemonize  
           fi
 
       - name: Connect with Tailscale 🌐
