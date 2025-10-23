@@ -66,7 +66,7 @@ jobs:
           if [ ! -f "windows.img" ]; then
             echo "Creating new 20GB windows image..."
             qemu-img create -f raw windows.img 25G
-            wget -O windows.iso "https://software.download.prss.microsoft.com/dbazure/Win10_22H2_English_x64v1.iso?t=2a4b991d-d453-4c54-80d3-61421e37a16e&P1=1761305385&P2=601&P3=2&P4=K4PvRhMhRat9fwvVE2mfJ%2bJ0d7SM8UX8OlEKNpMleh0YPIfYb4C0X0fmIy%2fT7K8sRY%2bWIFjkNE%2f%2f5SnxVVWN%2bopaGYtUUF9KRCih2d8mXytwMfQWUlF8YZct9AkkOliOj9Hz2t8Znyf226sBcrNsCkdg2V5UxSJm4w2bnxneLVSdI4g6v6f9bQMXoTZ1O1NFM7ugnVsKqGy%2f%2fcy9hoUsoue0qKgKtOsZyQRbo69Z2Zq%2bKs7k9evHbGLQLHqDSGtCbfuln9N5ajb9LMITTPh33HhLQc%2f4vtuo3vPpdg9FTNv0d%2foI75Dm5cHeAJc%2bsMYRcZj%2fA4aDImKP5hKikArd1g%3d%3d"
+            wget -O windows.iso "https://www.techspot.com/downloads/downloadnowfile/7578/?evp=c865d88ff00dc58c23b593c88f9f9633&file=11073"
             touch cdrom
           fi
 
