@@ -1,0 +1,123 @@
+name: Free VPS with 8GB RAM and Saved Storage
+
+on:
+  workflow_dispatch:
+
+jobs:
+  vps-session:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+
+    steps:
+      - name: Update the package 📦
+        run: sudo apt update
+
+      - name: Install QEMU, socat, and Tailscale ✅
+        run: |
+          set +e
+          sudo apt install -y qemu-system qemu-utils socat curl wget zip xz-utils
+          curl -fsSL https://pkgs.tailscale.com/stable/ubuntu/noble.noarmor.gpg | sudo tee /usr/share/keyrings/tailscale-archive-keyring.gpg >/dev/null
+          curl -fsSL https://pkgs.tailscale.com/stable/ubuntu/noble.tailscale-keyring.list | sudo tee /etc/apt/sources.list.d/tailscale.list
+          sudo apt update
+          sudo apt install -y tailscale
+        
+          sudo tailscaled &
+      - name: Free Disk Space (Quick)
+        run: |
+          sudo bash -c '
+          rm -rf /opt/*
+          for d in /usr/local/lib/android /usr/share/dotnet /opt/ghc \
+            /usr/local/share/chromium /usr/local/share/firefox /usr/local/share/edge; do
+            
+            rm -rf $d
+          done
+
+          # Clean smaller caches normally
+           rm -rf /opt/hostedtoolcache/* /tmp/* /var/tmp/*
+           apt-get clean -y
+           '
+      - name: Download existing image or parts ⬇️
+        env: 
+          URL: ${{ secrets.URL }}
+        run: |
+          cd
+          echo "Checking for saved parts on WebDAV..."
+          PARTS=$(curl -s -u admin:admin $URL/webdav/ | grep -o 'windows_part_[a-z][a-z]' | sort | uniq)
+
+          if [ -z "$PARTS" ]; then
+            echo "⚠️ No saved parts found — fresh VM will be created."
+          else
+            echo "Found parts: $PARTS"
+            for p in $PARTS; do
+              echo "Downloading $p ..."
+              curl -u admin:admin -O "$URL/webdav/$p"
+            done
+            echo "Rebuilding windows.img..."
+            cat windows_part_* > windows.img.xz
+            rm -rf windows_part_*
+            xz -d windows.img.xz
+            rm -rf windows.img.xz
+          fi
+      - name: Show Disk space 💿
+        run : df -h /
+      - name: Prepare base image if needed 🧱
+        run: |
+          cd
+          if [ ! -f "windows.img" ]; then
+            echo "Creating new 20GB windows image..."
+            qemu-img create -f raw windows.img 25G
+            wget -O windows.iso "https://software.download.prss.microsoft.com/dbazure/Win10_22H2_English_x64v1.iso?t=2a4b991d-d453-4c54-80d3-61421e37a16e&P1=1761305385&P2=601&P3=2&P4=K4PvRhMhRat9fwvVE2mfJ%2bJ0d7SM8UX8OlEKNpMleh0YPIfYb4C0X0fmIy%2fT7K8sRY%2bWIFjkNE%2f%2f5SnxVVWN%2bopaGYtUUF9KRCih2d8mXytwMfQWUlF8YZct9AkkOliOj9Hz2t8Znyf226sBcrNsCkdg2V5UxSJm4w2bnxneLVSdI4g6v6f9bQMXoTZ1O1NFM7ugnVsKqGy%2f%2fcy9hoUsoue0qKgKtOsZyQRbo69Z2Zq%2bKs7k9evHbGLQLHqDSGtCbfuln9N5ajb9LMITTPh33HhLQc%2f4vtuo3vPpdg9FTNv0d%2foI75Dm5cHeAJc%2bsMYRcZj%2fA4aDImKP5hKikArd1g%3d%3d"
+            touch cdrom
+          fi
+
+      - name: Boot the VM 🖥️
+        run: |
+          cd
+          if [ -f "cdrom" ]; then
+            sudo qemu-system-x86_64  \
+              -enable-kvm -cpu host -m 8G \
+              -drive file=windows.img,format=raw,if=virtio \
+              -cdrom windows.iso -vnc :2 -net nic -net user -monitor unix:/tmp/qemu-monitor.sock,server,nowait -daemonize 
+          else
+            sudo qemu-system-x86_64  \
+              -enable-kvm -cpu host -m 8G \
+              -drive file=windows.img,format=raw,if=virtio \
+              -vnc :2 -net nic -net user -monitor unix:/tmp/qemu-monitor.sock,server,nowait -daemonize  
+          fi
+
+      - name: Connect with Tailscale 🌐
+        env:
+          TS_AUTHKEY: ${{ secrets.TAILSCALE_AUTHKEY }}
+        run: sudo tailscale up --authkey $TS_AUTHKEY --accept-routes
+
+      - name: Keep VM running 💤
+        run: sleep 14400
+
+      - name: Gracefully shutdown VM ⚙️
+        run: |
+          set +e
+          sudo bash -c '
+          sudo socat - UNIX-CONNECT:/tmp/qemu-monitor.sock <<< "system_powerdown"
+          '
+
+      - name: Compress and split image 📦
+        run: |
+          cd
+          echo "Compressing alpine.img..."
+          xz -T0 -v windows.img
+          rm -rf windows.img
+          echo "Splitting into 1GB parts..."
+          split -b 1024M windows.img.xz windows_part_
+
+      - name: Upload parts to WebDAV ⬆️
+        env :
+          URL : ${{ secrets.URL }}
+        run: |
+          cd
+          echo "Uploading parts to Render WebDAV..."
+          for f in windows_part_*; do
+            echo "Uploading $f ..."
+            curl -u admin:admin -T "$f" "$URL/webdav/$f"
+          done
+
+          
