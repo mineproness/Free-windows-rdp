@@ -66,7 +66,7 @@ jobs:
           if [ ! -f "windows.img" ]; then
             echo "Creating new 20GB windows image..."
             qemu-img create -f raw windows.img 25G
-            wget -O windows.iso "https://www.techspot.com/downloads/downloadnowfile/7578/?evp=c865d88ff00dc58c23b593c88f9f9633&file=11073"
+            wget -O windows.iso "https://archive.org/download/tiny-10-23-h2/tiny10%20x64%2023h2.iso"
             touch cdrom
           fi
 
