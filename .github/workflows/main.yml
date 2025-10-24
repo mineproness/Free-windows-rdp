@@ -53,10 +53,10 @@ jobs:
               curl -u admin:admin -O "$URL/webdav/$p"
             done
             echo "Rebuilding windows.img..."
-            cat windows_part_* > windows.img.xz
+            cat windows_part_* > windows.zip
             rm -rf windows_part_*
-            xz -d windows.img.xz
-            rm -rf windows.img.xz
+            unzip windows.zip
+            rm -rf windows.zip
           fi
       - name: Show Disk space 💿
         run : df -h /
@@ -91,7 +91,7 @@ jobs:
         run: sudo tailscale up --authkey $TS_AUTHKEY --accept-routes
 
       - name: Keep VM running 💤
-        run: sleep 14400
+        run: sleep 3600
 
       - name: Gracefully shutdown VM ⚙️
         run: |
@@ -104,10 +104,10 @@ jobs:
         run: |
           cd
           echo "Compressing alpine.img..."
-          xz -T0 -v windows.img
+          zip windows.zip windows.img
           rm -rf windows.img
           echo "Splitting into 1GB parts..."
-          split -b 1024M windows.img.xz windows_part_
+          split -b 1024M windows.zip windows_part_
 
       - name: Upload parts to WebDAV ⬆️
         env :
