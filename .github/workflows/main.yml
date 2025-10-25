@@ -76,12 +76,12 @@ jobs:
           if [ -f "cdrom" ]; then
             sudo qemu-system-x86_64  \
               -enable-kvm -cpu host -m 8G \
-              -drive file=alpine.img,format=raw,if=virtio \
+              -hda alpine.img\
               -cdrom alpine.iso -vnc :2 -net nic -net user -monitor unix:/tmp/qemu-monitor.sock,server,nowait -daemonize 
           else
             sudo qemu-system-x86_64  \
               -enable-kvm -cpu host -m 8G \
-              -drive file=alpine.img,format=raw,if=virtio \
+              -hda alpine.img \
               -vnc :2 -net nic -net user -monitor unix:/tmp/qemu-monitor.sock,server,nowait -daemonize  
           fi
 
