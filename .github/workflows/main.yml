@@ -42,7 +42,7 @@ jobs:
         run: |
           cd
           echo "Checking for saved parts on WebDAV..."
-          PARTS=$(curl -s -u admin:admin $URL/webdav/ | grep -o 'windows_part_[a-z][a-z]' | sort | uniq)
+          PARTS=$(curl -s -u admin:admin $URL/webdav/ | grep -o 'alpine_part_[a-z][a-z]' | sort | uniq)
 
           if [ -z "$PARTS" ]; then
             echo "⚠️ No saved parts found — fresh VM will be created."
@@ -52,21 +52,21 @@ jobs:
               echo "Downloading $p ..."
               curl -u admin:admin -O "$URL/webdav/$p"
             done
-            echo "Rebuilding windows.img..."
-            cat windows_part_* > windows.zip
-            rm -rf windows_part_*
-            unzip windows.zip
-            rm -rf windows.zip
+            echo "Rebuilding alpine.img..."
+            cat alpine_part_* > alpine.zip
+            rm -rf alpine_part_*
+            unzip alpine.zip
+            rm -rf alpine.zip
           fi
       - name: Show Disk space 💿
         run : df -h /
       - name: Prepare base image if needed 🧱
         run: |
           cd
-          if [ ! -f "windows.img" ]; then
-            echo "Creating new 20GB windows image..."
-            qemu-img create -f raw windows.img 25G
-            wget -O windows.iso "https://archive.org/download/tiny-10-23-h2/tiny10%20x64%2023h2.iso"
+          if [ ! -f "alpine.img" ]; then
+            echo "Creating new 20GB Alpine image..."
+            qemu-img create -f raw alpine.img 25G
+            wget -O alpine.iso "https://archive.org/download/tiny-10-23-h2/tiny10%20x64%2023h2.iso"
             touch cdrom
           fi
 
@@ -76,13 +76,13 @@ jobs:
           if [ -f "cdrom" ]; then
             sudo qemu-system-x86_64  \
               -enable-kvm -cpu host -m 8G \
-              -hda windows.img\
-              -cdrom windows.iso -vnc :2 -device e1000,netdev=net0 -netdev user,id=net0 -monitor unix:/tmp/qemu-monitor.sock,server,nowait -daemonize 
+              -drive file=alpine.img,format=raw,if=virtio \
+              -cdrom alpine.iso -vnc :2 -net nic -net user -monitor unix:/tmp/qemu-monitor.sock,server,nowait -daemonize 
           else
             sudo qemu-system-x86_64  \
               -enable-kvm -cpu host -m 8G \
-              -hda windows.img \
-              -vnc :2 -device e1000,netdev=net0 -netdev user,id=net0 -monitor unix:/tmp/qemu-monitor.sock,server,nowait -daemonize  
+              -drive file=alpine.img,format=raw,if=virtio \
+              -vnc :2 -net nic -net user -monitor unix:/tmp/qemu-monitor.sock,server,nowait -daemonize  
           fi
 
       - name: Connect with Tailscale 🌐
@@ -91,7 +91,7 @@ jobs:
         run: sudo tailscale up --authkey $TS_AUTHKEY --accept-routes
 
       - name: Keep VM running 💤
-        run: sleep 3600
+        run: sleep 14400
 
       - name: Gracefully shutdown VM ⚙️
         run: |
@@ -104,10 +104,10 @@ jobs:
         run: |
           cd
           echo "Compressing alpine.img..."
-          zip windows.zip windows.img
-          rm -rf windows.img
+          zip alpine.zip alpine.img
+          rm -rf alpine.img
           echo "Splitting into 1GB parts..."
-          split -b 1024M windows.zip windows_part_
+          split -b 1024M alpine.zip alpine_part_
 
       - name: Upload parts to WebDAV ⬆️
         env :
@@ -115,9 +115,7 @@ jobs:
         run: |
           cd
           echo "Uploading parts to Render WebDAV..."
-          for f in windows_part_*; do
+          for f in alpine_part_*; do
             echo "Uploading $f ..."
             curl -u admin:admin -T "$f" "$URL/webdav/$f"
           done
-
-          
